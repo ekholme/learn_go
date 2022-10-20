@@ -6,15 +6,12 @@ import (
 	"math/rand"
 )
 
-//estimating the mean via binary search
-//so this sort of works but it goes forever
-//if sens gets too small -- maybe something to do with
-//some of the numeric precision?
+// estimating the mean via binary search
 func binarySearchMean(v []float64) (float64, int) {
-	low := 0.0
+	low := minimum(v)
 	high := maximum(v)
 	mn := mean(v)
-	sens := .05
+	sens := .001
 	guess := (low + high) / 2
 	counter := 1
 
@@ -43,6 +40,17 @@ func maximum(v []float64) float64 {
 
 	for i, e := range v {
 		if i == 0 || e > m {
+			m = e
+		}
+	}
+
+	return m
+}
+
+func minimum(v []float64) float64 {
+	var m float64
+	for i, e := range v {
+		if i == 0 || e < m {
 			m = e
 		}
 	}
