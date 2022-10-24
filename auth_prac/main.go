@@ -47,7 +47,7 @@ func Register(c *gin.Context) {
 	}
 
 	//this sort of works, but it will keep duplicates
-	//not really the point of this code to get rid of it, though
+	//not really the point of this code to get rid of dups, though
 	users = append(users, user)
 
 	c.JSON(http.StatusOK, gin.H{"user_list": users})
@@ -91,13 +91,24 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	//retrieve index of user in slice of users
 	ind, err := inpUser.checkUserExists()
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
 	}
 
-	//RESUME HERE
+	ku := users[ind]
+
+	err = bcrypt.CompareHashAndPassword([]byte(ku.Password), []byte(pw))
+
+	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": ku})
 }
 
 func main() {
@@ -107,6 +118,9 @@ func main() {
 	public := r.Group("/api")
 
 	public.GET("/register", Register)
+	public.GET("/login", Login)
 
 	r.Run(":8080")
 }
+
+//next step is to build and save tokens
