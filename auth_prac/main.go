@@ -4,13 +4,17 @@ package main
 //https://seefnasrul.medium.com/create-your-first-go-rest-api-with-jwt-authentication-in-gin-framework-dbe5bda72817
 //or
 //https://gist.github.com/mrcrilly/7703d630f9d589636d20b630245b6415
+//or
+//https://blog.logrocket.com/jwt-authentication-go/
 
 import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,12 +25,6 @@ type User struct {
 }
 
 var users []*User
-
-// a struct that we get register input from
-type RegisterInput struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
 
 // register a user from URL parameters
 // see https://github.com/gin-gonic/gin#querystring-parameters
@@ -91,7 +89,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	//retrieve index of user in slice of users
+	//retrieve index of user from slice of users
 	ind, err := inpUser.checkUserExists()
 
 	if err != nil {
@@ -110,6 +108,27 @@ func Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": ku})
 }
+
+// generate token function
+func (u *User) GenerateToken() (string, error) {
+	claims := jwt.MapClaims{}
+
+	claims["authorized"] = true
+	claims["user"] = u.Username
+	claims["exp"] = time.Now().Add(time.Hour * 2).Unix() //set expiration for 2 hrs
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenStr, err := token.SignedString([]byte("vryscrtkey"))
+
+	if err != nil {
+		return "", err
+	}
+
+	return tokenStr, nil
+}
+
+//RESUME HERE
 
 func main() {
 	//just creating a basic server right now
