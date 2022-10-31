@@ -11,9 +11,11 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -106,7 +108,15 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": ku})
+	//generating a token for the user
+	tokenStr, err := ku.GenerateToken()
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": tokenStr})
 }
 
 // generate token function
@@ -128,7 +138,30 @@ func (u *User) GenerateToken() (string, error) {
 	return tokenStr, nil
 }
 
-//RESUME HERE
+// function to get the token from the header?
+func extractBearerToken(header string) (string, error) {
+	if header == "" {
+		return "", errors.New("bad header")
+	}
+
+	jwtToken := strings.Split(header, " ")
+	if len(jwtToken) != 2 {
+		return "", errors.New("incorectly formatted auth header")
+	}
+
+	return jwtToken[1], nil
+}
+
+func parseToken(jwtToken string) (*jwt.Token, error) {
+	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method(*jwt.SigningMethodHS256); !ok {
+			return nil, errors.New("bad signing method received")
+		}
+		return []byte("vryscrtkey"), nil
+	})
+}
+
+//RESUME HERE -- LOOK AT ERRORS
 
 func main() {
 	//just creating a basic server right now
