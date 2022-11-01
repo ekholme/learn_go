@@ -1,24 +1,19 @@
 package main
 
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
 //see
+//https://www.sohamkamani.com/golang/jwt-authentication/
+//or
 //https://seefnasrul.medium.com/create-your-first-go-rest-api-with-jwt-authentication-in-gin-framework-dbe5bda72817
 //or
 //https://gist.github.com/mrcrilly/7703d630f9d589636d20b630245b6415
 //or
 //https://blog.logrocket.com/jwt-authentication-go/
-
-import (
-	"errors"
-	"log"
-	"net/http"
-	"strings"
-	"time"
-
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
-	jwt "github.com/golang-jwt/jwt/v4"
-	"golang.org/x/crypto/bcrypt"
-)
 
 // a user
 type User struct {
@@ -26,153 +21,39 @@ type User struct {
 	Password string `json:"password" binding:"required"`
 }
 
+var privateStuff = map[string]string{
+	"erice":   "message 1",
+	"kendall": "message 2",
+}
+
 var users []*User
 
-// register a user from URL parameters
-// see https://github.com/gin-gonic/gin#querystring-parameters
+//handlers
+func indexHandler(c *gin.Context) {
+	data := gin.H{
+		"hello": "world",
+	}
+
+	c.JSON(http.StatusOK, data)
+}
+
 func Register(c *gin.Context) {
-	u := c.Query("username")
-	pw := c.Query("password")
+	u := User{}
 
-	user := &User{
-		Username: u,
-		Password: pw,
-	}
-
-	err := user.hashPw()
-
-	//this isn't the best way to do this, but w/e for now
-	if err != nil {
-		log.Fatal("Failed to hash password")
-	}
-
-	//this sort of works, but it will keep duplicates
-	//not really the point of this code to get rid of dups, though
-	users = append(users, user)
-
-	c.JSON(http.StatusOK, gin.H{"user_list": users})
+	c.ShouldBindJSON(&u)
 }
 
-// creating a function to hash the password
-func (u *User) hashPw() error {
-	hashedPass, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
-
-	if err != nil {
-		return err
-	}
-
-	u.Password = string(hashedPass)
-
-	return nil
-}
-
-func (u *User) checkUserExists() (int, error) {
-	for i, v := range users {
-		if u.Username == v.Username {
-			return i, nil
-		}
-	}
-	return 0, errors.New("user doesn't exist")
-}
-
-// allow login
 func Login(c *gin.Context) {
-	//get params from querystring
-	u := c.Query("username")
-	pw := c.Query("password")
-
-	inpUser := &User{
-		Username: u,
-		Password: pw,
-	}
-
-	if len(users) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "no users registered"})
-		return
-	}
-
-	//retrieve index of user from slice of users
-	ind, err := inpUser.checkUserExists()
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	ku := users[ind]
-
-	err = bcrypt.CompareHashAndPassword([]byte(ku.Password), []byte(pw))
-
-	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	//generating a token for the user
-	tokenStr, err := ku.GenerateToken()
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"token": tokenStr})
+	//TODO
 }
 
-// generate token function
-func (u *User) GenerateToken() (string, error) {
-	claims := jwt.MapClaims{}
-
-	claims["authorized"] = true
-	claims["user"] = u.Username
-	claims["exp"] = time.Now().Add(time.Hour * 2).Unix() //set expiration for 2 hrs
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenStr, err := token.SignedString([]byte("vryscrtkey"))
-
-	if err != nil {
-		return "", err
-	}
-
-	return tokenStr, nil
-}
-
-// function to get the token from the header?
-func extractBearerToken(header string) (string, error) {
-	if header == "" {
-		return "", errors.New("bad header")
-	}
-
-	jwtToken := strings.Split(header, " ")
-	if len(jwtToken) != 2 {
-		return "", errors.New("incorectly formatted auth header")
-	}
-
-	return jwtToken[1], nil
-}
-
-func parseToken(jwtToken string) (*jwt.Token, error) {
-	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method(*jwt.SigningMethodHS256); !ok {
-			return nil, errors.New("bad signing method received")
-		}
-		return []byte("vryscrtkey"), nil
-	})
-}
-
-//RESUME HERE -- LOOK AT ERRORS
-
+//main function
 func main() {
-	//just creating a basic server right now
 	r := gin.Default()
 
-	public := r.Group("/api")
-
-	public.GET("/register", Register)
-	public.GET("/login", Login)
+	r.GET("/", indexHandler)
+	r.GET("/register", Register)
+	r.GET("/login", Login)
 
 	r.Run(":8080")
 }
-
-//next step is to build and save tokens
