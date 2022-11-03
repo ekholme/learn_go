@@ -28,7 +28,7 @@ var privateStuff = map[string]string{
 
 var users []*User
 
-//handlers
+// handlers
 func indexHandler(c *gin.Context) {
 	data := gin.H{
 		"hello": "world",
@@ -40,20 +40,34 @@ func indexHandler(c *gin.Context) {
 func Register(c *gin.Context) {
 	u := User{}
 
-	c.ShouldBindJSON(&u)
+	err := c.ShouldBindJSON(&u)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	//this won't handle duplicate users, but that's fine for now
+	users = append(users, &u)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "successfully registered",
+		"user":    u,
+	})
+
 }
 
 func Login(c *gin.Context) {
 	//TODO
 }
 
-//main function
+// main function
 func main() {
 	r := gin.Default()
 
 	r.GET("/", indexHandler)
-	r.GET("/register", Register)
-	r.GET("/login", Login)
+	r.POST("/register", Register)
+	r.POST("/login", Login)
 
 	r.Run(":8080")
 }
