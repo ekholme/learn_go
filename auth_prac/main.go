@@ -111,7 +111,7 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 	}
 
-	exp := int(time.Now().Add(2 * time.Hour).Unix())
+	exp := 3600 * 2
 
 	c.SetCookie("jwt_cookie", tokenStr, exp, "/", "localhost", false, true)
 
